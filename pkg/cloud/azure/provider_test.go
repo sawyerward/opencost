@@ -604,3 +604,90 @@ func TestGetPVKey(t *testing.T) {
 		require.Equal(t, "some-class", key.GetStorageClass())
 	})
 }
+
+func TestAzurePvKeyFeatures(t *testing.T) {
+	az := &Azure{}
+	region := "eastus"
+
+	makeCSIDiskPV := func(params map[string]string) *clustercache.PersistentVolume {
+		return &clustercache.PersistentVolume{
+			Spec: v1.PersistentVolumeSpec{
+				StorageClassName: "managed-csi",
+				PersistentVolumeSource: v1.PersistentVolumeSource{
+					CSI: &v1.CSIPersistentVolumeSource{
+						Driver:       "disk.csi.azure.com",
+						VolumeHandle: "disk-handle",
+					},
+				},
+			},
+		}
+	}
+
+	makeFileCSIPV := func() *clustercache.PersistentVolume {
+		return &clustercache.PersistentVolume{
+			Spec: v1.PersistentVolumeSpec{
+				StorageClassName: "azurefile-csi",
+				PersistentVolumeSource: v1.PersistentVolumeSource{
+					CSI: &v1.CSIPersistentVolumeSource{
+						Driver:       "file.csi.azure.com",
+						VolumeHandle: "file-handle",
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("Disk CSI + skuName Premium_LRS -> AzureDiskPremiumSSD", func(t *testing.T) {
+		params := map[string]string{"skuName": "Premium_LRS"}
+		key := az.GetPVKey(makeCSIDiskPV(params), params, region)
+		require.Equal(t, region+","+AzureDiskPremiumSSDStorageClass, key.Features())
+	})
+
+	t.Run("Disk CSI + skuName StandardSSD_LRS -> AzureDiskStandardSSD", func(t *testing.T) {
+		params := map[string]string{"skuName": "StandardSSD_LRS"}
+		key := az.GetPVKey(makeCSIDiskPV(params), params, region)
+		require.Equal(t, region+","+AzureDiskStandardSSDStorageClass, key.Features())
+	})
+
+	t.Run("Disk CSI + skuName Standard_LRS -> AzureDiskStandard", func(t *testing.T) {
+		params := map[string]string{"skuName": "Standard_LRS"}
+		key := az.GetPVKey(makeCSIDiskPV(params), params, region)
+		require.Equal(t, region+","+AzureDiskStandardStorageClass, key.Features())
+	})
+
+	t.Run("Disk CSI + skuname Premium_LRS -> AzureDiskPremiumSSD", func(t *testing.T) {
+		params := map[string]string{"skuname": "Premium_LRS"}
+		key := az.GetPVKey(makeCSIDiskPV(params), params, region)
+		require.Equal(t, region+","+AzureDiskPremiumSSDStorageClass, key.Features())
+	})
+
+	t.Run("Disk CSI + skuname StandardSSD_LRS -> AzureDiskStandardSSD", func(t *testing.T) {
+		params := map[string]string{"skuname": "StandardSSD_LRS"}
+		key := az.GetPVKey(makeCSIDiskPV(params), params, region)
+		require.Equal(t, region+","+AzureDiskStandardSSDStorageClass, key.Features())
+	})
+
+	t.Run("Disk CSI + skuname Standard_LRS -> AzureDiskStandard", func(t *testing.T) {
+		params := map[string]string{"skuname": "Standard_LRS"}
+		key := az.GetPVKey(makeCSIDiskPV(params), params, region)
+		require.Equal(t, region+","+AzureDiskStandardStorageClass, key.Features())
+	})
+
+	t.Run("Azure Files + skuName Premium_LRS -> AzureFilePremium", func(t *testing.T) {
+		params := map[string]string{"skuName": "Premium_LRS"}
+		key := az.GetPVKey(makeFileCSIPV(), params, region)
+		require.Equal(t, region+","+AzureFilePremiumStorageClass, key.Features())
+	})
+
+	t.Run("Azure Files + skuName Standard_LRS -> AzureFileStandard", func(t *testing.T) {
+		params := map[string]string{"skuName": "Standard_LRS"}
+		key := az.GetPVKey(makeFileCSIPV(), params, region)
+		require.Equal(t, region+","+AzureFileStandardStorageClass, key.Features())
+	})
+
+	t.Run("skuName case-insensitive", func(t *testing.T) {
+		params := map[string]string{"skuName": "premium_lrs"}
+		key := az.GetPVKey(makeCSIDiskPV(params), params, region)
+		require.Equal(t, region+","+AzureDiskPremiumSSDStorageClass, key.Features())
+	})
+}

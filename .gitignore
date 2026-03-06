@@ -6,6 +6,7 @@ cmd/costmodel/costmodel
 cmd/costmodel/costmodel-amd64
 cmd/costmodel/costmodel-arm64
 cmd/costmodel/costmodel-tilt
+costmodel
 
 pkg/cloud/azureorphan_test.go
 

@@ -1352,6 +1352,22 @@ func (key *azurePvKey) GetStorageClass() string {
 	return key.StorageClass
 }
 
+// diskSKUToStorageClass maps an Azure managed disk SKU string to the
+// corresponding AzureDisk* storage class constant. Returns an empty string
+// if the SKU is not recognised.
+func diskSKUToStorageClass(sku string) string {
+	switch {
+	case strings.EqualFold(sku, "Premium_LRS"):
+		return AzureDiskPremiumSSDStorageClass
+	case strings.EqualFold(sku, "StandardSSD_LRS"):
+		return AzureDiskStandardSSDStorageClass
+	case strings.EqualFold(sku, "Standard_LRS"):
+		return AzureDiskStandardStorageClass
+	default:
+		return ""
+	}
+}
+
 func (key *azurePvKey) Features() string {
 	storageClass := key.StorageClassParameters["storageaccounttype"]
 	storageSKU := key.StorageClassParameters["skuName"]
@@ -1366,23 +1382,11 @@ func (key *azurePvKey) Features() string {
 	}
 
 	if storageClass != "" {
-		if strings.EqualFold(storageClass, "Premium_LRS") {
-			storageClass = AzureDiskPremiumSSDStorageClass
-		} else if strings.EqualFold(storageClass, "StandardSSD_LRS") {
-			storageClass = AzureDiskStandardSSDStorageClass
-		} else if strings.EqualFold(storageClass, "Standard_LRS") {
-			storageClass = AzureDiskStandardStorageClass
-		}
+		storageClass = diskSKUToStorageClass(storageClass)
 	} else {
 		if isAzureDiskCSI {
 			// For Azure Disk CSI, the storage SKU (from skuName or skuname) represents the managed disk SKU
-			if strings.EqualFold(storageSKU, "Premium_LRS") {
-				storageClass = AzureDiskPremiumSSDStorageClass
-			} else if strings.EqualFold(storageSKU, "StandardSSD_LRS") {
-				storageClass = AzureDiskStandardSSDStorageClass
-			} else if strings.EqualFold(storageSKU, "Standard_LRS") {
-				storageClass = AzureDiskStandardStorageClass
-			}
+			storageClass = diskSKUToStorageClass(storageSKU)
 		} else {
 			// For Azure Files, skuName represents file share SKU
 			if strings.EqualFold(storageSKU, "Premium_LRS") {
